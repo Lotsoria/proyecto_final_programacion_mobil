@@ -52,6 +52,23 @@ class _ClientesScreenState extends State<ClientesScreen> {
                   '${c['direccion'] ?? ''}\n${c['telefono'] ?? ''} • ${c['email'] ?? ''}',
                 ),
                 isThreeLine: true,
+                trailing: IconButton(
+                  icon: const Icon(Icons.edit),
+                  tooltip: 'Editar',
+                  onPressed: () async {
+                    final updated = await Navigator.pushNamed(
+                      context,
+                      '/clientes/editar',
+                      arguments: c,
+                    );
+                    if (updated == true && mounted) {
+                      setState(() => _future = _load());
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Cliente actualizado')),
+                      );
+                    }
+                  },
+                ),
               );
             },
           );

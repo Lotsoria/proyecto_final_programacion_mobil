@@ -67,6 +67,13 @@ class ApiClient {
     return _unwrap(res);
   }
 
+  /// Realiza PUT y devuelve el JSON como `Map<String,dynamic>` o lanza excepción
+  /// con el mensaje de error si la API responde `{ "error": "..." }`.
+  Future<Map<String, dynamic>> put(String path, {Map<String, dynamic>? data}) async {
+    final res = await dio.put(path, data: data);
+    return _unwrap(res);
+  }
+
   /// Extrae el cuerpo válido o lanza excepción con detalle de error.
   Map<String, dynamic> _unwrap(Response res) {
     if (res.statusCode == 200 || res.statusCode == 201) {

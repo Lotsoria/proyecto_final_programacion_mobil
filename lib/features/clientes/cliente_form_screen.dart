@@ -19,6 +19,8 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
   final _telefono = TextEditingController();
   final _email = TextEditingController();
   bool _loading = false;
+  bool _initialized = false;
+  int? _clienteId; // si viene, es edición
 
   @override
   void dispose() {
@@ -27,6 +29,22 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
     _telefono.dispose();
     _email.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
+    // Si se navega con argumentos, se asume modo edición.
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map<String, dynamic>) {
+      _clienteId = args['id'] as int?;
+      _nombre.text = (args['nombre_completo'] ?? '').toString();
+      _direccion.text = (args['direccion'] ?? '').toString();
+      _telefono.text = (args['telefono'] ?? '').toString();
+      _email.text = (args['email'] ?? '').toString();
+    }
   }
 
   String? _required(String? v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null;
@@ -41,14 +59,21 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
     if (!_form.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
-      await ApiClient.I.post('clientes/', data: {
+      final body = {
         'nombre_completo': _nombre.text.trim(),
         'direccion': _direccion.text.trim(),
         'telefono': _telefono.text.trim(),
         'email': _email.text.trim(),
-      });
+      };
+      if (_clienteId != null) {
+        // Edición: intenta PUT clientes/{id}/
+        await ApiClient.I.put('clientes/${_clienteId!}/', data: body);
+      } else {
+        // Creación
+        await ApiClient.I.post('clientes/', data: body);
+      }
       if (!mounted) return;
-      Navigator.of(context).pop(true); // devuelve `true` para indicar creación exitosa
+      Navigator.of(context).pop(true); // `true` => operación exitosa (crear/editar)
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -61,8 +86,9 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isEdit = _clienteId != null;
     return Scaffold(
-      appBar: AppBar(title: const Text('Nuevo Cliente')),
+      appBar: AppBar(title: Text(isEdit ? 'Editar Cliente' : 'Nuevo Cliente')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -109,7 +135,7 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                         )
                       : const Icon(Icons.save),
-                  label: const Text('Guardar'),
+                  label: Text(isEdit ? 'Actualizar' : 'Guardar'),
                 ),
               ),
             ],
@@ -119,4 +145,3 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
     );
   }
 }
-

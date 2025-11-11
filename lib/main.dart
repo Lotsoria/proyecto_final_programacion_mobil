@@ -30,6 +30,8 @@ class App extends StatelessWidget {
         '/home': (_) => const HomeScreen(),
         '/clientes': (_) => const ClientesScreen(),
         '/clientes/nuevo': (_) => const ClienteFormScreen(),
+        // Para edición, se pasa el cliente como `arguments` al navegar.
+        '/clientes/editar': (_) => const ClienteFormScreen(),
         '/ventas': (_) => const VentasScreen(),
         '/compras': (_) => const ComprasScreen(),
         '/productos': (_) => const ProductosScreen(),
