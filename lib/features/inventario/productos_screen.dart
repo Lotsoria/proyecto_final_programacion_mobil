@@ -2,15 +2,16 @@ import 'package:flutter/material.dart';
 
 import '../../core/api_client.dart';
 
-/// Visualización de productos con filtros opcionales `categoria` y `min` (stock ≤).
-class ProductosScreen extends StatefulWidget {
-  const ProductosScreen({super.key});
+/// Inventario: consume `GET inventario/?categoria={id}&min={stock}` para listar
+/// productos filtrando por categoría y/o stock máximo.
+class InventarioScreen extends StatefulWidget {
+  const InventarioScreen({super.key});
 
   @override
-  State<ProductosScreen> createState() => _ProductosScreenState();
+  State<InventarioScreen> createState() => _InventarioScreenState();
 }
 
-class _ProductosScreenState extends State<ProductosScreen> {
+class _InventarioScreenState extends State<InventarioScreen> {
   int? _categoria;
   int? _min;
   late Future<List<Map<String, dynamic>>> _future;
@@ -21,19 +22,14 @@ class _ProductosScreenState extends State<ProductosScreen> {
     _future = _load();
   }
 
-  /// Llama a `GET inventario/` con query params según los filtros activos.
+  /// Llama a `GET inventario/` con los filtros activos y normaliza la respuesta.
   Future<List<Map<String, dynamic>>> _load() async {
     final query = <String, dynamic>{};
     if (_categoria != null) query['categoria'] = _categoria;
     if (_min != null) query['min'] = _min;
     final json = await ApiClient.I.get('inventario/', query: query);
-    final List items = json['results'] ?? [];
+    final List items = json['results'] ?? json['data'] ?? [];
     return items.cast<Map<String, dynamic>>();
-  }
-
-  /// Dispara recarga con filtros actuales.
-  void _aplicarFiltros() {
-    setState(() => _future = _load());
   }
 
   @override
@@ -53,22 +49,22 @@ class _ProductosScreenState extends State<ProductosScreen> {
                       border: OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.number,
-                    onChanged: (v) => _categoria = int.tryParse(v.isEmpty ? 'NaN' : v),
+                    onChanged: (v) => _categoria = int.tryParse(v),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     decoration: const InputDecoration(
-                      labelText: 'Stock ≤',
+                      labelText: 'Stock máximo (min)',
                       border: OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.number,
-                    onChanged: (v) => _min = int.tryParse(v.isEmpty ? 'NaN' : v),
+                    onChanged: (v) => _min = int.tryParse(v),
                   ),
                 ),
                 const SizedBox(width: 8),
-                FilledButton(onPressed: _aplicarFiltros, child: const Text('Filtrar')),
+                FilledButton(onPressed: () => setState(() => _future = _load()), child: const Text('Filtrar')),
               ],
             ),
           ),
@@ -90,9 +86,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
                   itemBuilder: (_, i) {
                     final p = data[i];
                     return ListTile(
-                      title: Text('${p['codigo']} • ${p['nombre']}'),
+                      title: Text('${p['codigo'] ?? ''} • ${p['nombre'] ?? ''}'),
                       subtitle: Text('Compra: Q${p['precio_compra']} • Venta: Q${p['precio_venta']}'),
-                      trailing: Chip(label: Text('Stock: ${p['stock']}')),
+                      trailing: Chip(label: Text('Stock: ${p['stock'] ?? '-'}')),
                     );
                   },
                 );
@@ -104,4 +100,3 @@ class _ProductosScreenState extends State<ProductosScreen> {
     );
   }
 }
-

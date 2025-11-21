@@ -50,24 +50,38 @@ class _ClientesScreenState extends State<ClientesScreen> {
                 title: Text(c['nombre_completo'] ?? ''),
                 subtitle: Text(
                   '${c['direccion'] ?? ''}\n${c['telefono'] ?? ''} • ${c['email'] ?? ''}',
+
                 ),
                 isThreeLine: true,
-                trailing: IconButton(
-                  icon: const Icon(Icons.edit),
-                  tooltip: 'Editar',
-                  onPressed: () async {
-                    final updated = await Navigator.pushNamed(
-                      context,
-                      '/clientes/editar',
-                      arguments: c,
-                    );
-                    if (updated == true && mounted) {
-                      setState(() => _future = _load());
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Cliente actualizado')),
-                      );
-                    }
-                  },
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      tooltip: 'Editar',
+                      onPressed: () async {
+                        final updated = await Navigator.pushNamed(
+                          context,
+                          '/clientes/editar',
+                          arguments: c,
+                        );
+                        if (updated == true && mounted) {
+                          setState(() {
+                            _future = _load();
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Cliente actualizado')),
+                          );
+                        }
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      color: Colors.redAccent,
+                      tooltip: 'Eliminar',
+                      onPressed: () => _confirmDelete(context, c),
+                    ),
+                  ],
                 ),
               );
             },
@@ -80,7 +94,9 @@ class _ClientesScreenState extends State<ClientesScreen> {
           final created = await Navigator.pushNamed(context, '/clientes/nuevo');
           if (created == true && mounted) {
             // Si se creó, recarga la lista.
-            setState(() => _future = _load());
+            setState(() {
+              _future = _load();
+            });
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Cliente creado')),
             );
@@ -91,4 +107,44 @@ class _ClientesScreenState extends State<ClientesScreen> {
       ),
     );
   }
+
+  /// Muestra confirmación y elimina el cliente si se acepta.
+  Future<void> _confirmDelete(BuildContext context, Map<String, dynamic> cliente) async {
+    final id = cliente['id'];
+    if (id == null) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar cliente'),
+        content: Text('¿Seguro que deseas eliminar a "${cliente['nombre_completo']}"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      // Según endpoints: DELETE clientes/<id>/
+      await ApiClient.I.delete('clientes/$id/');
+      if (!mounted) return;
+      setState(() {
+        _future = _load();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cliente eliminado')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
+
+
 }

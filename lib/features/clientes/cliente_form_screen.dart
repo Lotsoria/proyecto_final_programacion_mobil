@@ -66,8 +66,8 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
         'email': _email.text.trim(),
       };
       if (_clienteId != null) {
-        // Edición: intenta PUT clientes/{id}/
-        await ApiClient.I.put('clientes/${_clienteId!}/', data: body);
+        // Actualización parcial mediante PATCH clientes/{id}/
+        await ApiClient.I.patch('clientes/${_clienteId!}/', data: body);
       } else {
         // Creación
         await ApiClient.I.post('clientes/', data: body);

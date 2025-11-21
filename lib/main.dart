@@ -5,9 +5,17 @@ import 'features/auth/login_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/clientes/clientes_screen.dart';
 import 'features/clientes/cliente_form_screen.dart';
+import 'features/proveedores/proveedores_screen.dart';
+import 'features/proveedores/proveedor_form_screen.dart';
+import 'features/categorias/categorias_screen.dart';
+import 'features/categorias/categoria_form_screen.dart';
+import 'features/productos/productos_screen.dart';
+import 'features/productos/producto_form_screen.dart';
 import 'features/ventas/ventas_screen.dart';
+import 'features/ventas/venta_form_screen.dart';
 import 'features/compras/compras_screen.dart';
-import 'features/inventario/productos_screen.dart';
+import 'features/compras/compra_form_screen.dart';
+import 'features/inventario/productos_screen.dart' as inventario;
 import 'features/inventario/movimientos_screen.dart';
 
 /// Punto de entrada de la aplicación.
@@ -16,7 +24,7 @@ void main() {
   runApp(const App());
 }
 
-/// Widget raíz de la aplicación con rutas y tema.
+/// Widget raíz con rutas registradas y tema base.
 class App extends StatelessWidget {
   const App({super.key});
 
@@ -30,21 +38,30 @@ class App extends StatelessWidget {
         '/home': (_) => const HomeScreen(),
         '/clientes': (_) => const ClientesScreen(),
         '/clientes/nuevo': (_) => const ClienteFormScreen(),
-        // Para edición, se pasa el cliente como `arguments` al navegar.
         '/clientes/editar': (_) => const ClienteFormScreen(),
-        '/ventas': (_) => const VentasScreen(),
-        '/compras': (_) => const ComprasScreen(),
+        '/proveedores': (_) => const ProveedoresScreen(),
+        '/proveedores/nuevo': (_) => const ProveedorFormScreen(),
+        '/proveedores/editar': (_) => const ProveedorFormScreen(),
+        '/categorias': (_) => const CategoriasScreen(),
+        '/categorias/nueva': (_) => const CategoriaFormScreen(),
+        '/categorias/editar': (_) => const CategoriaFormScreen(),
         '/productos': (_) => const ProductosScreen(),
+        '/productos/nuevo': (_) => const ProductoFormScreen(),
+        '/productos/editar': (_) => const ProductoFormScreen(),
+        '/ventas': (_) => const VentasScreen(),
+        '/ventas/nueva': (_) => const VentaFormScreen(),
+        '/ventas/editar': (_) => const VentaFormScreen(),
+        '/compras': (_) => const ComprasScreen(),
+        '/compras/nueva': (_) => const CompraFormScreen(),
+        '/compras/editar': (_) => const CompraFormScreen(),
+        '/inventario': (_) => const inventario.InventarioScreen(),
         '/movimientos': (_) => const MovimientosScreen(),
       },
-      // Decide la pantalla inicial de forma asíncrona en tiempo de ejecución.
       home: FutureBuilder<bool>(
         future: ApiClient.I.hasSession(),
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
+            return const Scaffold(body: Center(child: CircularProgressIndicator()));
           }
           final logged = snap.data == true;
           return logged ? const HomeScreen() : const LoginScreen();
