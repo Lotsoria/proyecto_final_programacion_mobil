@@ -17,6 +17,8 @@ class _VentaFormScreenState extends State<VentaFormScreen> {
   final _numero = TextEditingController();
   final _clienteId = TextEditingController();
   final List<_VentaItemControllers> _items = [];
+  bool _cargandoNumero = false;
+  bool _numeroBloqueado = false;
   bool _loading = false;
   bool _initialized = false;
   int? _ventaId;
@@ -54,9 +56,57 @@ class _VentaFormScreenState extends State<VentaFormScreen> {
       }
     }
     if (_items.isEmpty) _items.add(_VentaItemControllers());
+    if (_ventaId != null && _numero.text.isNotEmpty) {
+      _numeroBloqueado = true;
+    } else if (_numero.text.isEmpty) {
+      _cargarNumeroSugerido();
+    }
   }
 
   String? _required(String? v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null;
+
+  Future<String?> _siguienteNumero({required String resource, required String prefijo}) async {
+    final res = await ApiClient.I.get(resource, query: {'page_size': 50});
+    final List data = res['results'] ?? res['data'] ?? [];
+    if (data.isEmpty) return '${prefijo}0001';
+    int maxNumero = 0;
+    int padding = 4;
+    for (final raw in data) {
+      final numero = (raw['numero'] ?? '').toString();
+      final match = RegExp(r'(\d+)$').firstMatch(numero);
+      if (match == null) continue;
+      final digits = match.group(1)!;
+      final value = int.tryParse(digits) ?? 0;
+      if (value > maxNumero) maxNumero = value;
+      if (digits.length > padding) padding = digits.length;
+    }
+    final siguiente = maxNumero + 1;
+    final ancho = padding < 4 ? 4 : padding;
+    return '$prefijo${siguiente.toString().padLeft(ancho, '0')}';
+  }
+
+  Future<void> _cargarNumeroSugerido() async {
+    if (_ventaId != null || _cargandoNumero || _numero.text.isNotEmpty) return;
+    setState(() => _cargandoNumero = true);
+    try {
+      final sugerido = await _siguienteNumero(resource: 'ventas/', prefijo: 'V-');
+      if (!mounted) return;
+      if (sugerido != null && sugerido.isNotEmpty) {
+        setState(() {
+          _numero.text = sugerido;
+          _numeroBloqueado = true;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo generar el n\xfamero autom\xE1ticamente')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _cargandoNumero = false);
+    }
+  }
 
   Future<void> _guardar() async {
     if (!_form.currentState!.validate()) return;
@@ -118,8 +168,24 @@ class _VentaFormScreenState extends State<VentaFormScreen> {
             children: [
               TextFormField(
                 controller: _numero,
-                decoration: const InputDecoration(labelText: 'NÃºmero'),
+                decoration: InputDecoration(
+                  labelText: 'Número',
+                  suffixIcon: _ventaId != null
+                      ? null
+                      : IconButton(
+                          tooltip: 'Generar correlativo',
+                          onPressed: _cargandoNumero ? null : _cargarNumeroSugerido,
+                          icon: _cargandoNumero
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.autorenew),
+                        ),
+                ),
                 validator: _required,
+                readOnly: _numeroBloqueado,
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -230,3 +296,4 @@ class _VentaItemControllers {
     precio.dispose();
   }
 }
+
