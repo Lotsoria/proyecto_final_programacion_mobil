@@ -47,7 +47,9 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> {
     try {
       await ApiClient.I.delete('proveedores/$id/');
       if (!mounted) return;
-      setState(() => _future = _load());
+                  setState(() {
+        _future = _load();
+                  });
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Proveedor eliminado')));
     } catch (e) {
       if (!mounted) return;
@@ -87,7 +89,7 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> {
                       onPressed: () async {
                         final updated = await Navigator.pushNamed(context, '/proveedores/editar', arguments: p);
                         if (updated == true && mounted) {
-                          setState(() => _future = _load());
+                                      setState(() { _future = _load(); });
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Proveedor actualizado')));
                         }
                       },
@@ -108,7 +110,7 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> {
         onPressed: () async {
           final created = await Navigator.pushNamed(context, '/proveedores/nuevo');
           if (created == true && mounted) {
-            setState(() => _future = _load());
+                        setState(() { _future = _load(); });
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Proveedor creado')));
           }
         },

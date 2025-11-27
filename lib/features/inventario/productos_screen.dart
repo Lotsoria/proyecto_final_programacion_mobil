@@ -64,7 +64,11 @@ class _InventarioScreenState extends State<InventarioScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                FilledButton(onPressed: () => setState(() => _future = _load()), child: const Text('Filtrar')),
+                FilledButton(onPressed: () {
+                  setState(() {
+                    _future = _load();
+                  });
+                }, child: const Text('Filtrar')),
               ],
             ),
           ),

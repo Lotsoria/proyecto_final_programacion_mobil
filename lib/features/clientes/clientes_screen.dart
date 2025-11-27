@@ -66,9 +66,7 @@ class _ClientesScreenState extends State<ClientesScreen> {
                           arguments: c,
                         );
                         if (updated == true && mounted) {
-                          setState(() {
-                            _future = _load();
-                          });
+                          setState(() { _future = _load(); });
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Cliente actualizado')),
                           );
@@ -92,9 +90,7 @@ class _ClientesScreenState extends State<ClientesScreen> {
         onPressed: () async {
           final created = await Navigator.pushNamed(context, '/clientes/nuevo');
           if (created == true && mounted) {
-            setState(() {
-              _future = _load();
-            });
+            setState(() { _future = _load(); });
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Cliente creado')),
             );
@@ -129,9 +125,7 @@ class _ClientesScreenState extends State<ClientesScreen> {
     try {
       await ApiClient.I.delete('clientes/$id/');
       if (!mounted) return;
-      setState(() {
-        _future = _load();
-      });
+      setState(() { _future = _load(); });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Cliente eliminado')),
       );

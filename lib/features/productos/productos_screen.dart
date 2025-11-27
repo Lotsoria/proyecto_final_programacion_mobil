@@ -49,7 +49,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
     try {
       await ApiClient.I.delete('productos/$id/');
       if (!mounted) return;
-      setState(() => _future = _load());
+      setState(() { _future = _load(); });
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Producto eliminado')));
     } catch (e) {
       if (!mounted) return;
@@ -94,7 +94,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 }
                 if (data.isEmpty) return const Center(child: Text('Sin productos'));
                 return RefreshIndicator(
-                  onRefresh: () async => setState(() => _future = _load()),
+                  onRefresh: () async {
+                    setState(() { _future = _load(); });
+                  },
                   child: ListView.separated(
                     itemCount: data.length,
                     separatorBuilder: (_, __) => const Divider(height: 1),
@@ -117,7 +119,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                   onPressed: () async {
                                     final updated = await Navigator.pushNamed(context, '/productos/editar', arguments: p);
                                     if (updated == true && mounted) {
-                                      setState(() => _future = _load());
+                                      setState(() { _future = _load(); });
                                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Producto actualizado')));
                                     }
                                   },
@@ -144,7 +146,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
         onPressed: () async {
           final created = await Navigator.pushNamed(context, '/productos/nuevo');
           if (created == true && mounted) {
-            setState(() => _future = _load());
+            setState(() { _future = _load(); });
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Producto creado')));
           }
         },

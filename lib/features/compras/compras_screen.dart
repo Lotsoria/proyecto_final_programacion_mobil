@@ -52,7 +52,7 @@ class _ComprasScreenState extends State<ComprasScreen> {
     try {
       await ApiClient.I.delete('compras/$id/');
       if (!mounted) return;
-      setState(() => _future = _load());
+      setState(() { _future = _load(); });
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Compra eliminada')));
     } catch (e) {
       if (!mounted) return;
@@ -72,7 +72,7 @@ class _ComprasScreenState extends State<ComprasScreen> {
     try {
       await ApiClient.I.post('compras/$id/recibir/');
       if (!mounted) return;
-      setState(() => _future = _load());
+      setState(() { _future = _load(); });
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Compra recibida')));
     } catch (e) {
       if (!mounted) return;
@@ -118,7 +118,9 @@ class _ComprasScreenState extends State<ComprasScreen> {
           }
           if (data.isEmpty) return const Center(child: Text('Sin órdenes'));
           return RefreshIndicator(
-            onRefresh: () async => setState(() => _future = _load()),
+            onRefresh: () async {
+                setState(() { _future = _load(); });
+            },
             child: ListView.separated(
               itemCount: data.length,
               separatorBuilder: (_, __) => const Divider(height: 1),
@@ -132,7 +134,7 @@ class _ComprasScreenState extends State<ComprasScreen> {
                     onSelected: (option) {
                       if (option == 'editar') {
                         Navigator.pushNamed(context, '/compras/editar', arguments: o).then((updated) {
-                          if (updated == true && mounted) setState(() => _future = _load());
+                          if (updated == true && mounted) setState(() { _future = _load(); });
                         });
                       } else if (option == 'recibir') {
                         _recibir(o);
@@ -165,7 +167,7 @@ class _ComprasScreenState extends State<ComprasScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           final created = await Navigator.pushNamed(context, '/compras/nueva');
-          if (created == true && mounted) setState(() => _future = _load());
+          if (created == true && mounted) setState(() { _future = _load(); });
         },
         icon: const Icon(Icons.playlist_add),
         label: const Text('Nueva'),
