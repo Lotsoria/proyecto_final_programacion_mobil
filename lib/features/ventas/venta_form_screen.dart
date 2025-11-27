@@ -17,6 +17,10 @@ class _VentaFormScreenState extends State<VentaFormScreen> {
   final _numero = TextEditingController();
   final _clienteId = TextEditingController();
   final List<_VentaItemControllers> _items = [];
+  late Future<List<Map<String, dynamic>>> _clientesFuture;
+  List<Map<String, dynamic>> _clientes = [];
+  late Future<List<Map<String, dynamic>>> _productosFuture;
+  List<Map<String, dynamic>> _productos = [];
   bool _cargandoNumero = false;
   bool _numeroBloqueado = false;
   bool _loading = false;
@@ -56,6 +60,8 @@ class _VentaFormScreenState extends State<VentaFormScreen> {
       }
     }
     if (_items.isEmpty) _items.add(_VentaItemControllers());
+    _clientesFuture = _loadClientes();
+    _productosFuture = _loadProductos();
     if (_ventaId != null && _numero.text.isNotEmpty) {
       _numeroBloqueado = true;
     } else if (_numero.text.isEmpty) {
@@ -64,6 +70,20 @@ class _VentaFormScreenState extends State<VentaFormScreen> {
   }
 
   String? _required(String? v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null;
+
+  Future<List<Map<String, dynamic>>> _loadClientes() async {
+    final res = await ApiClient.I.get('clientes/', query: {'page_size': 100});
+    final List data = res['results'] ?? res['data'] ?? [];
+    _clientes = data.cast<Map<String, dynamic>>();
+    return _clientes;
+  }
+
+  Future<List<Map<String, dynamic>>> _loadProductos() async {
+    final res = await ApiClient.I.get('productos/', query: {'page_size': 200});
+    final List data = res['results'] ?? res['data'] ?? [];
+    _productos = data.cast<Map<String, dynamic>>();
+    return _productos;
+  }
 
   Future<String?> _siguienteNumero({required String resource, required String prefijo}) async {
     final res = await ApiClient.I.get(resource, query: {'page_size': 50});
@@ -169,7 +189,7 @@ class _VentaFormScreenState extends State<VentaFormScreen> {
               TextFormField(
                 controller: _numero,
                 decoration: InputDecoration(
-                  labelText: 'Número',
+                  labelText: 'Numero',
                   suffixIcon: _ventaId != null
                       ? null
                       : IconButton(
@@ -188,11 +208,48 @@ class _VentaFormScreenState extends State<VentaFormScreen> {
                 readOnly: _numeroBloqueado,
               ),
               const SizedBox(height: 12),
-              TextFormField(
-                controller: _clienteId,
-                decoration: const InputDecoration(labelText: 'Cliente ID'),
-                validator: _required,
-                keyboardType: TextInputType.number,
+              FutureBuilder<List<Map<String, dynamic>>>(
+                future: _clientesFuture,
+                builder: (context, snap) {
+                  if (snap.connectionState != ConnectionState.done) {
+                    return TextFormField(
+                      controller: _clienteId,
+                      decoration: const InputDecoration(labelText: 'Cliente ID'),
+                      validator: _required,
+                      keyboardType: TextInputType.number,
+                    );
+                  }
+                  if (snap.hasError || (snap.data ?? _clientes).isEmpty) {
+                    return TextFormField(
+                      controller: _clienteId,
+                      decoration: const InputDecoration(labelText: 'Cliente ID'),
+                      validator: _required,
+                      keyboardType: TextInputType.number,
+                    );
+                  }
+                  final items = (snap.data ?? _clientes)
+                      .where((c) => c['id'] != null)
+                      .map<Map<String, dynamic>>((c) => {
+                            'id': c['id'],
+                            'nombre': c['nombre_completo'] ?? c['nombre'] ?? c['email'] ?? "Cliente ${c['id']}",
+                          })
+                      .toList();
+                  final value = int.tryParse(_clienteId.text);
+                  return DropdownButtonFormField<int>(
+                    value: items.any((c) => c['id'] == value) ? value : null,
+                    decoration: const InputDecoration(labelText: 'Cliente'),
+                    items: items
+                        .map(
+                          (c) => DropdownMenuItem<int>(
+                            value: c['id'] as int,
+                            child: Text('${c["id"]} - ${c["nombre"]}'),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) => setState(() => _clienteId.text = v?.toString() ?? ''),
+                    validator: (v) => v == null ? 'Requerido' : null,
+                  );
+                },
               ),
               const SizedBox(height: 16),
               const Text('Items'),
@@ -210,11 +267,60 @@ class _VentaFormScreenState extends State<VentaFormScreen> {
                           Row(
                             children: [
                               Expanded(
-                                child: TextFormField(
-                                  controller: item.producto,
-                                  decoration: const InputDecoration(labelText: 'Producto ID'),
-                                  validator: _required,
-                                  keyboardType: TextInputType.number,
+                                child: FutureBuilder<List<Map<String, dynamic>>>(
+                                  future: _productosFuture,
+                                  builder: (context, snap) {
+                                    if (snap.connectionState != ConnectionState.done) {
+                                      return TextFormField(
+                                        controller: item.producto,
+                                        decoration: const InputDecoration(labelText: 'Producto ID'),
+                                        validator: _required,
+                                        keyboardType: TextInputType.number,
+                                      );
+                                    }
+                                    if (snap.hasError || (snap.data ?? _productos).isEmpty) {
+                                      return TextFormField(
+                                        controller: item.producto,
+                                        decoration: const InputDecoration(labelText: 'Producto ID'),
+                                        validator: _required,
+                                        keyboardType: TextInputType.number,
+                                      );
+                                    }
+                                    final productos = (snap.data ?? _productos)
+                                        .where((p) => p['id'] != null)
+                                        .map<Map<String, dynamic>>((p) => {
+                                              'id': p['id'],
+                                              'nombre': p['nombre'] ?? p['codigo'] ?? 'Producto',
+                                              'codigo': p['codigo'] ?? '',
+                                              'precio': p['precio_venta'],
+                                            })
+                                        .toList();
+                                    final value = int.tryParse(item.producto.text);
+                                    return DropdownButtonFormField<int>(
+                                      value: productos.any((p) => p['id'] == value) ? value : null,
+                                      decoration: const InputDecoration(labelText: 'Producto'),
+                                      items: productos
+                                          .map(
+                                            (p) => DropdownMenuItem<int>(
+                                              value: p['id'] as int,
+                                              child: Text('${p["codigo"]} - ${p["nombre"]}'),
+                                            ),
+                                          )
+                                          .toList(),
+                                      onChanged: (v) => setState(() {
+                                        item.producto.text = v?.toString() ?? '';
+                                        if (v != null) {
+                                          final match = productos.firstWhere(
+                                            (p) => p['id'] == v,
+                                            orElse: () => {},
+                                          );
+                                          final precio = match['precio'];
+                                          if (precio != null) item.precio.text = precio.toString();
+                                        }
+                                      }),
+                                      validator: (v) => v == null ? 'Requerido' : null,
+                                    );
+                                  },
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -296,4 +402,21 @@ class _VentaItemControllers {
     precio.dispose();
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

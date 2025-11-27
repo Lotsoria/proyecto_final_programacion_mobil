@@ -5,12 +5,6 @@ import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 
-/// Cliente HTTP centralizado basado en Dio con manejo de cookies de sesión.
-///
-/// - Base URL: selecciona automáticamente `10.0.2.2` para Android emulador y
-///   `127.0.0.1` para otros entornos de desarrollo.
-/// - Autenticación: la API establece cookie `sessionid` tras `POST login/`.
-///   Este cliente reenvía la cookie automáticamente en las siguientes peticiones.
 class ApiClient {
   /// Instancia singleton para uso global.
   static final ApiClient I = ApiClient._();
@@ -32,7 +26,6 @@ class ApiClient {
         headers: {
           'Content-Type': 'application/json',
         },
-        // Considerar válidos los estados < 500 para poder mapear errores 400/401.
         validateStatus: (code) => code != null && code < 500,
       ),
     );
@@ -43,9 +36,6 @@ class ApiClient {
   }
 
   /// Verifica si existe una cookie `sessionid` cargada (sesión iniciada).
-  ///
-  /// Nota: algunas implementaciones de `CookieJar` pueden resolver cookies de
-  /// forma asíncrona, por lo que este método es `Future<bool>`.
   Future<bool> hasSession() async {
     final uri = Uri.parse(dio.options.baseUrl);
     final cookies = await _cookieJar.loadForRequest(uri);
@@ -54,8 +44,7 @@ class ApiClient {
     );
   }
 
-  /// Realiza POST y devuelve el JSON como `Map<String,dynamic>` o lanza excepción
-  /// con el mensaje de error si la API responde `{ "error": "..." }`.
+
   Future<Map<String, dynamic>> post(String path, {Map<String, dynamic>? data}) async {
     final res = await dio.post(path, data: data);
     return _unwrap(res);

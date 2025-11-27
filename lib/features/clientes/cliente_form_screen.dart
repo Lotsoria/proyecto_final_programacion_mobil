@@ -73,7 +73,7 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
         await ApiClient.I.post('clientes/', data: body);
       }
       if (!mounted) return;
-      Navigator.of(context).pop(true); // `true` => operación exitosa (crear/editar)
+      Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
