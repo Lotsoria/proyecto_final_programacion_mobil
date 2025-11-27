@@ -23,7 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  /// Invoca el endpoint de login y gestiona errores de negocio `{error: ...}`.
+  /// Invoca el endpoint de login y gestiona errores de negocio
   Future<void> _login() async {
     if (!_form.currentState!.validate()) return;
     setState(() => _loading = true);
