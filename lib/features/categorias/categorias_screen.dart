@@ -105,7 +105,9 @@ class _CategoriasScreenState extends State<CategoriasScreen> {
         onPressed: () async {
           final created = await Navigator.pushNamed(context, '/categorias/nueva');
           if (created == true && mounted) {
-            setState(() => _future = _load());
+            setState(() {
+             _future = _load();
+            });
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Categoría creada')));
           }
         },

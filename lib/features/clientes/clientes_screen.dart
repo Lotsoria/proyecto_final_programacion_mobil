@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-
 import '../../core/api_client.dart';
 
-/// Lista de clientes activos provenientes del endpoint `GET clientes/`.
 class ClientesScreen extends StatefulWidget {
   const ClientesScreen({super.key});
 
@@ -19,7 +17,7 @@ class _ClientesScreenState extends State<ClientesScreen> {
     _future = _load();
   }
 
-  /// Carga y normaliza la respuesta `{ results: [...] }` en una lista tipada.
+  /// Carga y normaliza la respuesta
   Future<List<Map<String, dynamic>>> _load() async {
     final json = await ApiClient.I.get('clientes/');
     final List items = json['results'] ?? [];
@@ -39,7 +37,9 @@ class _ClientesScreenState extends State<ClientesScreen> {
           if (snap.hasError) {
             return Center(child: Text('Error: ${snap.error}'));
           }
-          final data = (snap.data ?? []) as List<Map<String, dynamic>>;
+          final data = 
+              (snap.data ?? []) as List<Map<String, dynamic>>;
+
           if (data.isEmpty) return const Center(child: Text('Sin clientes'));
           return ListView.separated(
             itemCount: data.length,
@@ -90,10 +90,8 @@ class _ClientesScreenState extends State<ClientesScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
-          // Navega al formulario de nuevo cliente y espera resultado.
           final created = await Navigator.pushNamed(context, '/clientes/nuevo');
           if (created == true && mounted) {
-            // Si se creó, recarga la lista.
             setState(() {
               _future = _load();
             });

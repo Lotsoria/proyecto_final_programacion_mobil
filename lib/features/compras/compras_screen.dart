@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../core/api_client.dart';
 
 /// Compras: consume `GET compras/` y permite crear, editar (pendientes),
-/// borrar (pendiente) y recibir (`POST compras/{id}/recibir/`).
 class ComprasScreen extends StatefulWidget {
   const ComprasScreen({super.key});
 
