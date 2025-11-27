@@ -100,7 +100,7 @@ class _CompraFormScreenState extends State<CompraFormScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo generar el número automáticamente')),
+          const SnackBar(content: Text('No se pudo generar el nï¿½mero automï¿½ticamente')),
         );
       }
     } finally {
@@ -170,7 +170,7 @@ class _CompraFormScreenState extends State<CompraFormScreen> {
               TextFormField(
                 controller: _numero,
                 decoration: InputDecoration(
-                  labelText: 'Número',
+                  labelText: 'NÃºmero',
                   suffixIcon: _compraId != null
                       ? null
                       : IconButton(

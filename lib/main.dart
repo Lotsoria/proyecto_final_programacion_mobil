@@ -14,6 +14,7 @@ import 'features/productos/producto_form_screen.dart';
 import 'features/ventas/ventas_screen.dart';
 import 'features/ventas/venta_form_screen.dart';
 import 'features/compras/compras_screen.dart';
+import 'features/compras/compra_form_screen.dart';
 import 'features/inventario/productos_screen.dart' as inventario;
 import 'features/inventario/movimientos_screen.dart';
 
@@ -52,8 +53,8 @@ class App extends StatelessWidget {
         '/ventas/nueva': (_) => const VentaFormScreen(),
         '/ventas/editar': (_) => const VentaFormScreen(),
         '/compras': (_) => const ComprasScreen(),
-        '/compras/nueva': (_) => const ComprasScreen(),
-        '/compras/editar': (_) => const ComprasScreen(),
+        '/compras/nueva': (_) => const CompraFormScreen(),
+        '/compras/editar': (_) => const CompraFormScreen(),
         '/inventario': (_) => const inventario.InventarioScreen(),
         '/movimientos': (_) => const MovimientosScreen(),
       },
