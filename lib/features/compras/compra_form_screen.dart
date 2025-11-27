@@ -17,6 +17,10 @@ class _CompraFormScreenState extends State<CompraFormScreen> {
   final _numero = TextEditingController();
   final _proveedorId = TextEditingController();
   final List<_CompraItemControllers> _items = [];
+  late Future<List<Map<String, dynamic>>> _proveedoresFuture;
+  List<Map<String, dynamic>> _proveedores = [];
+  late Future<List<Map<String, dynamic>>> _productosFuture;
+  List<Map<String, dynamic>> _productos = [];
   bool _cargandoNumero = false;
   bool _numeroBloqueado = false;
   bool _loading = false;
@@ -56,6 +60,8 @@ class _CompraFormScreenState extends State<CompraFormScreen> {
       }
     }
     if (_items.isEmpty) _items.add(_CompraItemControllers());
+    _proveedoresFuture = _loadProveedores();
+    _productosFuture = _loadProductos();
     if (_compraId != null && _numero.text.isNotEmpty) {
       _numeroBloqueado = true;
     } else if (_numero.text.isEmpty) {
@@ -64,6 +70,20 @@ class _CompraFormScreenState extends State<CompraFormScreen> {
   }
 
   String? _required(String? v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null;
+
+  Future<List<Map<String, dynamic>>> _loadProveedores() async {
+    final res = await ApiClient.I.get('proveedores/', query: {'page_size': 100});
+    final List data = res['results'] ?? res['data'] ?? [];
+    _proveedores = data.cast<Map<String, dynamic>>();
+    return _proveedores;
+  }
+
+  Future<List<Map<String, dynamic>>> _loadProductos() async {
+    final res = await ApiClient.I.get('productos/', query: {'page_size': 200});
+    final List data = res['results'] ?? res['data'] ?? [];
+    _productos = data.cast<Map<String, dynamic>>();
+    return _productos;
+  }
 
   Future<String?> _siguienteNumero({required String resource, required String prefijo}) async {
     final res = await ApiClient.I.get(resource, query: {'page_size': 50});
@@ -189,11 +209,48 @@ class _CompraFormScreenState extends State<CompraFormScreen> {
                 readOnly: _numeroBloqueado,
               ),
               const SizedBox(height: 12),
-              TextFormField(
-                controller: _proveedorId,
-                decoration: const InputDecoration(labelText: 'Proveedor ID'),
-                validator: _required,
-                keyboardType: TextInputType.number,
+              FutureBuilder<List<Map<String, dynamic>>>(
+                future: _proveedoresFuture,
+                builder: (context, snap) {
+                  if (snap.connectionState != ConnectionState.done) {
+                    return TextFormField(
+                      controller: _proveedorId,
+                      decoration: const InputDecoration(labelText: 'Proveedor ID'),
+                      validator: _required,
+                      keyboardType: TextInputType.number,
+                    );
+                  }
+                  if (snap.hasError || (snap.data ?? _proveedores).isEmpty) {
+                    return TextFormField(
+                      controller: _proveedorId,
+                      decoration: const InputDecoration(labelText: 'Proveedor ID'),
+                      validator: _required,
+                      keyboardType: TextInputType.number,
+                    );
+                  }
+                  final proveedores = (snap.data ?? _proveedores)
+                      .where((p) => p['id'] != null)
+                      .map<Map<String, dynamic>>((p) => {
+                            'id': p['id'],
+                            'nombre': p['empresa'] ?? p['nombre'] ?? p['nombre_completo'] ?? p['correo'] ?? "Proveedor ${p['id']}",
+                          })
+                      .toList();
+                  final value = int.tryParse(_proveedorId.text);
+                  return DropdownButtonFormField<int>(
+                    value: proveedores.any((p) => p['id'] == value) ? value : null,
+                    decoration: const InputDecoration(labelText: 'Proveedor'),
+                    items: proveedores
+                        .map(
+                          (p) => DropdownMenuItem<int>(
+                            value: p['id'] as int,
+                            child: Text(p["nombre"] ?? ''),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) => setState(() => _proveedorId.text = v?.toString() ?? ''),
+                    validator: (v) => v == null ? 'Requerido' : null,
+                  );
+                },
               ),
               const SizedBox(height: 16),
               const Text('Items'),
@@ -211,11 +268,60 @@ class _CompraFormScreenState extends State<CompraFormScreen> {
                           Row(
                             children: [
                               Expanded(
-                                child: TextFormField(
-                                  controller: item.producto,
-                                  decoration: const InputDecoration(labelText: 'Producto ID'),
-                                  validator: _required,
-                                  keyboardType: TextInputType.number,
+                                child: FutureBuilder<List<Map<String, dynamic>>>(
+                                  future: _productosFuture,
+                                  builder: (context, snap) {
+                                    if (snap.connectionState != ConnectionState.done) {
+                                      return TextFormField(
+                                        controller: item.producto,
+                                        decoration: const InputDecoration(labelText: 'Producto ID'),
+                                        validator: _required,
+                                        keyboardType: TextInputType.number,
+                                      );
+                                    }
+                                    if (snap.hasError || (snap.data ?? _productos).isEmpty) {
+                                      return TextFormField(
+                                        controller: item.producto,
+                                        decoration: const InputDecoration(labelText: 'Producto ID'),
+                                        validator: _required,
+                                        keyboardType: TextInputType.number,
+                                      );
+                                    }
+                                    final productos = (snap.data ?? _productos)
+                                        .where((p) => p['id'] != null)
+                                        .map<Map<String, dynamic>>((p) => {
+                                              'id': p['id'],
+                                              'nombre': p['nombre'] ?? p['codigo'] ?? 'Producto',
+                                              'codigo': p['codigo'] ?? '',
+                                              'costo': p['costo_promedio'] ?? p['costo'] ?? p['precio_compra'],
+                                            })
+                                        .toList();
+                                    final value = int.tryParse(item.producto.text);
+                                    return DropdownButtonFormField<int>(
+                                      value: productos.any((p) => p['id'] == value) ? value : null,
+                                      decoration: const InputDecoration(labelText: 'Producto'),
+                                      items: productos
+                                          .map(
+                                            (p) => DropdownMenuItem<int>(
+                                              value: p['id'] as int,
+                                              child: Text('${p["codigo"]} - ${p["nombre"]}'),
+                                            ),
+                                          )
+                                          .toList(),
+                                      onChanged: (v) => setState(() {
+                                        item.producto.text = v?.toString() ?? '';
+                                        if (v != null) {
+                                          final match = productos.firstWhere(
+                                            (p) => p['id'] == v,
+                                            orElse: () => {},
+                                          );
+                                          final costo = match['costo'];
+                                          if (costo != null) item.costo.text = costo.toString();
+                                        }
+                                      }),
+                                      validator: (v) => v == null ? 'Requerido' : null,
+                                    );
+                                  },
                                 ),
                               ),
                               const SizedBox(width: 12),
