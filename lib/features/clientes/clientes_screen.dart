@@ -127,7 +127,6 @@ class _ClientesScreenState extends State<ClientesScreen> {
     );
     if (ok != true) return;
     try {
-      // Según endpoints: DELETE clientes/<id>/
       await ApiClient.I.delete('clientes/$id/');
       if (!mounted) return;
       setState(() {
