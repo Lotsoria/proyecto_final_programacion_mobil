@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/api_client.dart';
 
 /// Inventario: consume `GET inventario/?categoria={id}&min={stock}` para listar
-/// productos filtrando por categoría y/o stock máximo.
+/// productos filtrando por categoria y/o stock minimo.
 class InventarioScreen extends StatefulWidget {
   const InventarioScreen({super.key});
 
@@ -15,11 +15,14 @@ class _InventarioScreenState extends State<InventarioScreen> {
   int? _categoria;
   int? _min;
   late Future<List<Map<String, dynamic>>> _future;
+  late Future<List<Map<String, dynamic>>> _categoriasFuture;
+  List<Map<String, dynamic>> _categorias = [];
 
   @override
   void initState() {
     super.initState();
     _future = _load();
+    _categoriasFuture = _loadCategorias();
   }
 
   /// Llama a `GET inventario/` con los filtros activos y normaliza la respuesta.
@@ -30,6 +33,13 @@ class _InventarioScreenState extends State<InventarioScreen> {
     final json = await ApiClient.I.get('inventario/', query: query);
     final List items = json['results'] ?? json['data'] ?? [];
     return items.cast<Map<String, dynamic>>();
+  }
+
+  Future<List<Map<String, dynamic>>> _loadCategorias() async {
+    final json = await ApiClient.I.get('categorias/', query: {'page_size': 100});
+    final List items = json['results'] ?? json['data'] ?? [];
+    _categorias = items.cast<Map<String, dynamic>>();
+    return _categorias;
   }
 
   @override
@@ -43,20 +53,67 @@ class _InventarioScreenState extends State<InventarioScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    decoration: const InputDecoration(
-                      labelText: 'Categoría (id)',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                    onChanged: (v) => _categoria = int.tryParse(v),
+                  child: FutureBuilder<List<Map<String, dynamic>>>(
+                    future: _categoriasFuture,
+                    builder: (context, snap) {
+                      if (snap.connectionState != ConnectionState.done) {
+                        return TextField(
+                          decoration: const InputDecoration(
+                            labelText: 'Categoria (id)',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                          onChanged: (v) => _categoria = int.tryParse(v),
+                        );
+                      }
+                      if (snap.hasError || (snap.data ?? _categorias).isEmpty) {
+                        return TextField(
+                          decoration: const InputDecoration(
+                            labelText: 'Categoria (id)',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                          onChanged: (v) => _categoria = int.tryParse(v),
+                        );
+                      }
+                      final categorias = (snap.data ?? _categorias)
+                          .where((c) => c['id'] != null)
+                          .map<Map<String, dynamic>>(
+                            (c) => {
+                              'id': c['id'],
+                              'nombre': c['nombre'] ?? 'Categoria ${c['id']}',
+                            },
+                          )
+                          .toList();
+                      return DropdownButtonFormField<int>(
+                        value: _categoria,
+                        decoration: const InputDecoration(
+                          labelText: 'Categoria',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        ),
+                        items: [
+                          const DropdownMenuItem<int>(
+                            value: null,
+                            child: Text('Todas'),
+                          ),
+                          ...categorias.map(
+                            (c) => DropdownMenuItem<int>(
+                              value: c['id'] as int,
+                              child: Text(c['nombre'] ?? ''),
+                            ),
+                          ),
+                        ],
+                        onChanged: (v) => setState(() => _categoria = v),
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     decoration: const InputDecoration(
-                      labelText: 'Stock máximo (min)',
+                      labelText: 'Stock maximo (min)',
                       border: OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.number,
@@ -64,11 +121,14 @@ class _InventarioScreenState extends State<InventarioScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                FilledButton(onPressed: () {
-                  setState(() {
-                    _future = _load();
-                  });
-                }, child: const Text('Filtrar')),
+                FilledButton(
+                  onPressed: () {
+                    setState(() {
+                      _future = _load();
+                    });
+                  },
+                  child: const Text('Filtrar'),
+                ),
               ],
             ),
           ),
@@ -90,8 +150,8 @@ class _InventarioScreenState extends State<InventarioScreen> {
                   itemBuilder: (_, i) {
                     final p = data[i];
                     return ListTile(
-                      title: Text('${p['codigo'] ?? ''} • ${p['nombre'] ?? ''}'),
-                      subtitle: Text('Compra: Q${p['precio_compra']} • Venta: Q${p['precio_venta']}'),
+                      title: Text('${p['codigo'] ?? ''} - ${p['nombre'] ?? ''}'),
+                      subtitle: Text('Compra: Q${p['precio_compra']} - Venta: Q${p['precio_venta']}'),
                       trailing: Chip(label: Text('Stock: ${p['stock'] ?? '-'}')),
                     );
                   },
