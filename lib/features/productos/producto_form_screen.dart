@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/api_client.dart';
 
-/// Formulario de productos para `POST productos/` y `PUT|PATCH productos/{id}/`.
+/// Formulario de productos para `POST productos/` y `PATCH productos/{id}/`.
 class ProductoFormScreen extends StatefulWidget {
   const ProductoFormScreen({super.key});
 
@@ -20,6 +20,12 @@ class _ProductoFormScreenState extends State<ProductoFormScreen> {
   final _stock = TextEditingController();
   final _proveedorId = TextEditingController();
   final _categoriaId = TextEditingController();
+  late Future<List<Map<String, dynamic>>> _proveedoresFuture;
+  List<Map<String, dynamic>> _proveedores = [];
+  late Future<List<Map<String, dynamic>>> _categoriasFuture;
+  List<Map<String, dynamic>> _categorias = [];
+  bool _cargandoCodigo = false;
+  bool _codigoBloqueado = false;
   bool _activo = true;
   bool _loading = false;
   bool _initialized = false;
@@ -56,9 +62,73 @@ class _ProductoFormScreenState extends State<ProductoFormScreen> {
       _categoriaId.text = (args['categoria_id'] ?? args['categoria'] ?? '').toString();
       _activo = args['activo'] != false;
     }
+    _proveedoresFuture = _loadProveedores();
+    _categoriasFuture = _loadCategorias();
+    if (_productoId != null && _codigo.text.isNotEmpty) {
+      _codigoBloqueado = true;
+    } else if (_codigo.text.isEmpty) {
+      _cargarCodigoSugerido();
+    }
   }
 
   String? _required(String? v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null;
+
+  Future<List<Map<String, dynamic>>> _loadProveedores() async {
+    final res = await ApiClient.I.get('proveedores/', query: {'page_size': 100});
+    final List data = res['results'] ?? res['data'] ?? [];
+    _proveedores = data.cast<Map<String, dynamic>>();
+    return _proveedores;
+  }
+
+  Future<List<Map<String, dynamic>>> _loadCategorias() async {
+    final res = await ApiClient.I.get('categorias/', query: {'page_size': 100});
+    final List data = res['results'] ?? res['data'] ?? [];
+    _categorias = data.cast<Map<String, dynamic>>();
+    return _categorias;
+  }
+
+  Future<String?> _siguienteCodigo() async {
+    final res = await ApiClient.I.get('productos/', query: {'page_size': 50});
+    final List data = res['results'] ?? res['data'] ?? [];
+    if (data.isEmpty) return 'PROD001';
+    int maxNumero = 0;
+    int padding = 3;
+    for (final raw in data) {
+      final codigo = (raw['codigo'] ?? '').toString();
+      final match = RegExp('(\\d+)\$').firstMatch(codigo);
+      if (match == null) continue;
+      final digits = match.group(1)!;
+      final value = int.tryParse(digits) ?? 0;
+      if (value > maxNumero) maxNumero = value;
+      if (digits.length > padding) padding = digits.length;
+    }
+    final siguiente = maxNumero + 1;
+    final ancho = padding < 3 ? 3 : padding;
+    return 'PROD${siguiente.toString().padLeft(ancho, '0')}';
+  }
+
+  Future<void> _cargarCodigoSugerido() async {
+    if (_productoId != null || _cargandoCodigo || _codigo.text.isNotEmpty) return;
+    setState(() => _cargandoCodigo = true);
+    try {
+      final sugerido = await _siguienteCodigo();
+      if (!mounted) return;
+      if (sugerido != null && sugerido.isNotEmpty) {
+        setState(() {
+          _codigo.text = sugerido;
+          _codigoBloqueado = true;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo generar el codigo automaticamente')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _cargandoCodigo = false);
+    }
+  }
 
   Future<void> _guardar() async {
     if (!_form.currentState!.validate()) return;
@@ -69,7 +139,7 @@ class _ProductoFormScreenState extends State<ProductoFormScreen> {
     final categoria = int.tryParse(_categoriaId.text);
     if (precioVenta == null || precioCompra == null || stock == null || proveedor == null || categoria == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Revisa números (precios, stock, proveedor y categoría).')),
+        const SnackBar(content: Text('Revisa numeros (precios, stock, proveedor y categoria).')),
       );
       return;
     }
@@ -116,8 +186,24 @@ class _ProductoFormScreenState extends State<ProductoFormScreen> {
             children: [
               TextFormField(
                 controller: _codigo,
-                decoration: const InputDecoration(labelText: 'Código'),
+                decoration: InputDecoration(
+                  labelText: 'Codigo',
+                  suffixIcon: _productoId != null
+                      ? null
+                      : IconButton(
+                          tooltip: 'Generar correlativo',
+                          onPressed: _cargandoCodigo ? null : _cargarCodigoSugerido,
+                          icon: _cargandoCodigo
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.autorenew),
+                        ),
+                ),
                 validator: _required,
+                readOnly: _codigoBloqueado,
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -128,7 +214,7 @@ class _ProductoFormScreenState extends State<ProductoFormScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _descripcion,
-                decoration: const InputDecoration(labelText: 'Descripción'),
+                decoration: const InputDecoration(labelText: 'Descripcion'),
                 maxLines: 2,
               ),
               const SizedBox(height: 12),
@@ -164,20 +250,98 @@ class _ProductoFormScreenState extends State<ProductoFormScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: TextFormField(
-                      controller: _proveedorId,
-                      decoration: const InputDecoration(labelText: 'Proveedor ID'),
-                      validator: _required,
-                      keyboardType: TextInputType.number,
+                    child: FutureBuilder<List<Map<String, dynamic>>>(
+                      future: _proveedoresFuture,
+                      builder: (context, snap) {
+                        if (snap.connectionState != ConnectionState.done) {
+                          return TextFormField(
+                            controller: _proveedorId,
+                            decoration: const InputDecoration(labelText: 'Proveedor ID'),
+                            validator: _required,
+                            keyboardType: TextInputType.number,
+                          );
+                        }
+                        if (snap.hasError || (snap.data ?? _proveedores).isEmpty) {
+                          return TextFormField(
+                            controller: _proveedorId,
+                            decoration: const InputDecoration(labelText: 'Proveedor ID'),
+                            validator: _required,
+                            keyboardType: TextInputType.number,
+                          );
+                        }
+                        final proveedores = (snap.data ?? _proveedores)
+                            .where((p) => p['id'] != null)
+                            .map<Map<String, dynamic>>(
+                              (p) => {
+                                'id': p['id'],
+                                'nombre': p['empresa'] ?? p['nombre'] ?? 'Proveedor ${p['id']}',
+                              },
+                            )
+                            .toList();
+                        final value = int.tryParse(_proveedorId.text);
+                        return DropdownButtonFormField<int>(
+                          value: proveedores.any((p) => p['id'] == value) ? value : null,
+                          decoration: const InputDecoration(labelText: 'Proveedor'),
+                          items: proveedores
+                              .map(
+                                (p) => DropdownMenuItem<int>(
+                                  value: p['id'] as int,
+                                  child: Text(p['nombre'] ?? ''),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (v) => setState(() => _proveedorId.text = v?.toString() ?? ''),
+                          validator: (v) => v == null ? 'Requerido' : null,
+                        );
+                      },
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: TextFormField(
-                      controller: _categoriaId,
-                      decoration: const InputDecoration(labelText: 'Categoría ID'),
-                      validator: _required,
-                      keyboardType: TextInputType.number,
+                    child: FutureBuilder<List<Map<String, dynamic>>>(
+                      future: _categoriasFuture,
+                      builder: (context, snap) {
+                        if (snap.connectionState != ConnectionState.done) {
+                          return TextFormField(
+                            controller: _categoriaId,
+                            decoration: const InputDecoration(labelText: 'Categoria ID'),
+                            validator: _required,
+                            keyboardType: TextInputType.number,
+                          );
+                        }
+                        if (snap.hasError || (snap.data ?? _categorias).isEmpty) {
+                          return TextFormField(
+                            controller: _categoriaId,
+                            decoration: const InputDecoration(labelText: 'Categoria ID'),
+                            validator: _required,
+                            keyboardType: TextInputType.number,
+                          );
+                        }
+                        final categorias = (snap.data ?? _categorias)
+                            .where((c) => c['id'] != null)
+                            .map<Map<String, dynamic>>(
+                              (c) => {
+                                'id': c['id'],
+                                'nombre': c['nombre'] ?? 'Categoria ${c['id']}',
+                              },
+                            )
+                            .toList();
+                        final value = int.tryParse(_categoriaId.text);
+                        return DropdownButtonFormField<int>(
+                          value: categorias.any((c) => c['id'] == value) ? value : null,
+                          decoration: const InputDecoration(labelText: 'Categoria'),
+                          items: categorias
+                              .map(
+                                (c) => DropdownMenuItem<int>(
+                                  value: c['id'] as int,
+                                  child: Text(c['nombre'] ?? ''),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (v) => setState(() => _categoriaId.text = v?.toString() ?? ''),
+                          validator: (v) => v == null ? 'Requerido' : null,
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -194,7 +358,11 @@ class _ProductoFormScreenState extends State<ProductoFormScreen> {
                 child: FilledButton.icon(
                   onPressed: _loading ? null : _guardar,
                   icon: _loading
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
                       : const Icon(Icons.save),
                   label: Text(isEdit ? 'Actualizar' : 'Guardar'),
                 ),

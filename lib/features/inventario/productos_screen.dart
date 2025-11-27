@@ -42,6 +42,13 @@ class _InventarioScreenState extends State<InventarioScreen> {
     return _categorias;
   }
 
+  void _aplicarFiltros() {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _future = _load();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -85,7 +92,7 @@ class _InventarioScreenState extends State<InventarioScreen> {
                             },
                           )
                           .toList();
-                      return DropdownButtonFormField<int>(
+                      return DropdownButtonFormField<int?>(
                         value: _categoria,
                         decoration: const InputDecoration(
                           labelText: 'Categoria',
@@ -93,12 +100,12 @@ class _InventarioScreenState extends State<InventarioScreen> {
                           contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         ),
                         items: [
-                          const DropdownMenuItem<int>(
+                          const DropdownMenuItem<int?>(
                             value: null,
                             child: Text('Todas'),
                           ),
                           ...categorias.map(
-                            (c) => DropdownMenuItem<int>(
+                            (c) => DropdownMenuItem<int?>(
                               value: c['id'] as int,
                               child: Text(c['nombre'] ?? ''),
                             ),
@@ -122,11 +129,7 @@ class _InventarioScreenState extends State<InventarioScreen> {
                 ),
                 const SizedBox(width: 8),
                 FilledButton(
-                  onPressed: () {
-                    setState(() {
-                      _future = _load();
-                    });
-                  },
+                  onPressed: _aplicarFiltros,
                   child: const Text('Filtrar'),
                 ),
               ],

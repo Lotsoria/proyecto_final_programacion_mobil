@@ -14,15 +14,19 @@ class MovimientosScreen extends StatefulWidget {
 class _MovimientosScreenState extends State<MovimientosScreen> {
   String? _tipo;
   final _producto = TextEditingController();
+  int? _productoId;
   final _desde = TextEditingController();
   final _hasta = TextEditingController();
   final _referencia = TextEditingController();
   late Future<List<Map<String, dynamic>>> _future;
+  late Future<List<Map<String, dynamic>>> _productosFuture;
+  List<Map<String, dynamic>> _productos = [];
 
   @override
   void initState() {
     super.initState();
     _future = _load();
+    _productosFuture = _loadProductos();
   }
 
   @override
@@ -37,13 +41,28 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
   Future<List<Map<String, dynamic>>> _load() async {
     final query = <String, dynamic>{};
     if (_tipo != null) query['tipo'] = _tipo;
-    if (_producto.text.isNotEmpty) query['producto'] = _producto.text;
+    final prodValue = _productoId ?? int.tryParse(_producto.text);
+    if (prodValue != null) query['producto'] = prodValue;
     if (_desde.text.isNotEmpty) query['desde'] = _desde.text;
     if (_hasta.text.isNotEmpty) query['hasta'] = _hasta.text;
     if (_referencia.text.isNotEmpty) query['referencia'] = _referencia.text;
     final json = await ApiClient.I.get('inventario/movimientos/', query: query);
     final List items = json['results'] ?? json['data'] ?? [];
     return items.cast<Map<String, dynamic>>();
+  }
+
+  Future<List<Map<String, dynamic>>> _loadProductos() async {
+    final json = await ApiClient.I.get('productos/', query: {'page_size': 200});
+    final List items = json['results'] ?? json['data'] ?? [];
+    _productos = items.cast<Map<String, dynamic>>();
+    return _productos;
+  }
+
+  void _aplicarFiltros() {
+    setState(() {
+      _productoId = _productoId ?? int.tryParse(_producto.text);
+      _future = _load();
+    });
   }
 
   @override
@@ -72,12 +91,61 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: TextField(
-                        controller: _producto,
-                        decoration: const InputDecoration(labelText: 'Producto ID', border: OutlineInputBorder()),
-                        keyboardType: TextInputType.number,
-                      ),
-                    ),
+                      child: FutureBuilder<List<Map<String, dynamic>>>(
+                        future: _productosFuture,
+                        builder: (context, snap) {
+                          if (snap.connectionState != ConnectionState.done) {
+                            return TextField(
+                              controller: _producto,
+                              decoration: const InputDecoration(labelText: 'Producto ID', border: OutlineInputBorder()),
+                              keyboardType: TextInputType.number,
+                              onChanged: (_) => _productoId = null,
+                            );
+                          }
+                          if (snap.hasError || (snap.data ?? _productos).isEmpty) {
+                            return TextField(
+                              controller: _producto,
+                              decoration: const InputDecoration(labelText: 'Producto ID', border: OutlineInputBorder()),
+                              keyboardType: TextInputType.number,
+                              onChanged: (_) => _productoId = null,
+                            );
+                          }
+                          final productos = (snap.data ?? _productos)
+                              .where((p) => p['id'] != null)
+                              .map<Map<String, dynamic>>((p) => {
+                                    'id': p['id'],
+                                    'nombre': p['nombre'] ?? p['codigo'] ?? 'Producto',
+                                    'codigo': p['codigo'] ?? '',
+                                  })
+                              .toList();
+                          final value = _productoId ?? int.tryParse(_producto.text);
+                          return DropdownButtonFormField<int?>(
+                            value: productos.any((p) => p['id'] == value) ? value : null,
+                            decoration: const InputDecoration(
+                              labelText: 'Producto',
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            ),
+                            items: [
+                              const DropdownMenuItem<int?>(
+                                value: null,
+                                child: Text('Todos'),
+                              ),
+                          ...productos.map(
+                            (p) => DropdownMenuItem<int?>(
+                              value: p['id'] as int,
+                              child: Text('${p["codigo"]} - ${p["nombre"]}'),
+                            ),
+                          ),
+                        ],
+                        onChanged: (v) => setState(() {
+                          _productoId = v;
+                          _producto.text = v?.toString() ?? '';
+                        }),
+                      );
+                    },
+                  ),
+                ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -107,7 +175,7 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: FilledButton(
-                    onPressed: () => setState(() => _future = _load()),
+                    onPressed: _aplicarFiltros,
                     child: const Text('Filtrar'),
                   ),
                 ),
